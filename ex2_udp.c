@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <unistd.h>
 
 void CreateBoard();
 
@@ -24,21 +25,24 @@ int main(int argc, char *argv[]) {
 }
 
 void PrintMazeLine() {
-    int i, j, num;
-    char str[10];
-    char buf[5];
+    int i=0;
+    int j;
+    int temp;
+    char arr[64];
+    char buff[32];
     //write the board game in line format to screen
-    for (i = 0; i < SIZE; i++) {
-        for (j = 0; j < SIZE; j++) {
-            num = board[i][j];
-            //convert number to char for printing
-            strcpy(str, itoa(num, buf, 10));
+    for (i ; i < MATRIX_ROW_SIZE; i++) {
+        for (j = 0; j < MATRIX_COL_SIZE; j++) {
+            temp = GameMatrix[i][j];
+
+            snprintf(buff, 32, "%04d", temp);
+            strcpy(arr, buff);
             //add comma
-            if (i != SIZE - 1 || j != SIZE - 1) {
-                strcat(str, ",");
+            if (i != MATRIX_ROW_SIZE - 1 || j != MATRIX_COL_SIZE - 1) {
+                strcat(arr, ",");
             }
             //write number to STDOUT
-            if (write(1, str, strlen(str)) < strlen(str)) {
+            if (write(1, arr, strlen(arr)) < strlen(arr)) {
                 //TODO error write
             }
         }
