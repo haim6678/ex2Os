@@ -47,10 +47,12 @@ int main() {
 
     //set for sigusr1
     if (sigaction(SIGUSR1, &InputAction, NULL) != 0) {
-        perror();
+        perror("faild in sigaction");
+        exit(-1);
     }
     if (sigaction(SIGINT, &CloseAction, NULL) != 0) {
-        perror();
+        perror("faild in sigaction");
+        exit(-1);
     }
 
     PrintMatrix(GameMatrix);
