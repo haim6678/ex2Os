@@ -13,8 +13,6 @@ void ManageGame();
 
 int GameMatrix[MATRIX_ROW_SIZE][MATRIX_COL_SIZE];
 
-void TimePassed(__pid_t pid);
-
 void HandleClose(int sigNum);
 
 void PrintMazeLine();
@@ -34,8 +32,6 @@ void MoveRight();
 void PushToEmptyInCol(int i, int SecondI, int j, int direction);
 
 void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direction);
-
-void CheckKey(char *key);
 
 int Check2NeighborsInCol(int rowLocation, int secondRowLoc, int j, int direc);
 
@@ -67,7 +63,6 @@ int main(int argc, char *argv[]) {
     //set the handle in sigint
     SetHandler();
     //todo how the user is getting the maze
-
 
     ManageGame();
     return 0;
@@ -286,7 +281,6 @@ void MoveUp() {
     int rowLocation;
     //iterate on every column
     for (j; j < MATRIX_COL_SIZE; j++) {
-
         //check from bottom to top on each row
         for (rowLocation = MATRIX_ROW_SIZE - 1; rowLocation <= 1; rowLocation--) {
             //if the row above has empty space then push it up and push everything from bottom to top
