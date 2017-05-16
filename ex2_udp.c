@@ -9,17 +9,17 @@
 #define MATRIX_ROW_SIZE 4
 #define MATRIX_COL_SIZE 4
 
-void ManageGame(int *wait, __pid_t pid);
+void ManageGame();
 
 int GameMatrix[MATRIX_ROW_SIZE][MATRIX_COL_SIZE];
 
-void TimePassed(int *wait, __pid_t pid);
+void TimePassed(__pid_t pid);
 
 void HandleClose(int sigNum);
 
 void PrintMazeLine();
 
-void CreateBoard(int *waitTime);
+void CreateBoard();
 
 void SetHandler();
 
@@ -41,27 +41,35 @@ int Check2NeighborsInCol(int rowLocation, int secondRowLoc, int j, int direc);
 
 int Check2NeighborsInRow(int colLocation, int secLocation, int i, int direction);
 
-void UpdateCountForUp(int *first, int *sec);
+void UpdateCountForUpAndLeft(int *first, int *sec);
 
-void UpdateCountForDown(int *first, int *sec);
-char direction;
+void UpdateCountForDownAndRight(int *first, int *sec);
+
+void HandleUserInput(int sig);
+
+void AlarmHandler(int sig);
+
+char inputDirection;
+unsigned int waitTime;
+__pid_t SecondProcessPid;
+
 int main(int argc, char *argv[]) {
 
-    __pid_t alertPid;
-    unsigned int waitTime;
+
     if (argc < 2) {
         perror("not enough parameters");
     }
 
-    alertPid = atoi(argv[1]);
+    SecondProcessPid = atoi(argv[1]);
     //create the board
-    CreateBoard(&waitTime);
+    CreateBoard();
+    kill(SecondProcessPid, SIGUSR1);
     //set the handle in sigint
     SetHandler();
     //todo how the user is getting the maze
 
 
-    ManageGame(&waitTime, alertPid);
+    ManageGame();
     return 0;
 
 }
@@ -89,29 +97,6 @@ void SetHandler() {
 
 }
 
-void TimePassed(int *wait, __pid_t pid) {
-    int randomPlace;
-    int placeX;
-    int placeY;
-    srand(time(NULL)); //todo will work with 2 initialize or should i send as param from main
-    *wait = (rand() % 4) + 1;
-    do {
-        randomPlace = (rand() % 16);
-        placeX = randomPlace / MATRIX_ROW_SIZE;
-        placeY = randomPlace % MATRIX_ROW_SIZE;
-    } while (GameMatrix[placeX][placeY] != 0);
-
-    GameMatrix[placeX][placeY] = 2;
-    PrintMazeLine();
-    if (kill(pid, SIGUSR1) < 0) {
-        //todo handle error
-    }
-}
-
-void CheckKey(char *key) {
-    memset(key, 0, 16);
-    //todo check key and copy to arr
-}
 
 void AlarmHandler(int sig) {
     signal(SIGALRM, AlarmHandler);
@@ -127,51 +112,71 @@ void AlarmHandler(int sig) {
     } while (GameMatrix[XRandom][YRandom] != 0);
 
     GameMatrix[XRandom][YRandom] = 2;
+    PrintMazeLine();
+    if (kill(SecondProcessPid, SIGUSR1) < 0) {
+        //todo handle error
+    }
+    alarm(waitTime);
+}
+
+void HandleUserInput(int sig) {
+
+    //todo what if it's not legal key need also set alarm to 0?
+    signal(SIGUSR1, HandleUserInput);
+
+    switch (inputDirection) {
+        case 'w' : //todo small and capital letters?
+        case 'W':
+            MoveUp();
+            break;
+        case 'x':
+        case 'X':
+            MoveDown();
+            break;
+        case 'a':
+        case 'A':
+            MoveLeft();
+            break;
+        case 'd':
+        case 'D':
+            MoveRight();
+            break;
+        case 's':
+        case 'S':
+            CreateBoard(); //todo check if will work
+            break;
+        default:
+            break;
+    }
+    kill(SecondProcessPid, SIGUSR1);
 }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
-void ManageGame(int *waitTime, __pid_t pid) {
 
-    int userPressedKey;
-    char key[16];
-    signal(SIGALRM, AlarmHandler);
+void ManageGame() {
+
+    signal(SIGALRM, AlarmHandler); //todo do i need to block other signals while handling?
+    signal(SIGUSR1, HandleUserInput); //todo do i need to block other signals while handling?
+    __pid_t myPid = getpid();
     while (1) {
 
-        alarm(*waitTime);
+        //todo does setting movement need to open thread to handle?????
+        alarm(waitTime);
         system("stty cbreak -echo");
-        direction =
+        inputDirection = getchar(); //todo what happend while waiting and then getting signal do we go back here or skip the getchr?
         system("stty cooked echo");
-        //user pressed key
-        if (userPressedKey == 1) {
-            CheckKey(key);
-            alarm(0);
-            //todo does setting movement need to open thread to handle?????
-            if (strcmp("up", key) == 0) {
-                MoveUp();
-
-            } else if (strcmp("down", key) == 0) {
-
-                MoveDown();
-            } else if (strcmp("left", key) == 0) {
-                MoveLeft();
-
-            } else if (strcmp("right", key) == 0) {
-                MoveRight();
-
-            } else if (strcmp("new", key)) {
-
-            }
-        }
+        kill(myPid, SIGUSR1);
+        alarm(0);
         srand(time(NULL));
-        *waitTime = (rand() % 4) + 1;
+        waitTime = (rand() % 4) + 1;
         PrintMazeLine(); //make shure
-        if (kill(pid, SIGUSR1) < 0) {
+        if (kill(SecondProcessPid, SIGUSR1) < 0) {
             //todo handle error
         }
     }
 }
-#pragma clang diagnostic pop
+
 
 void HandleClose(int sigNum) {
     write(1, "BYE BYE", strlen("BYE BYE"));
@@ -204,7 +209,7 @@ void PrintMazeLine() {
     }
 }
 
-void CreateBoard(int *waitTime) {
+void CreateBoard() {
 
     //declare variables
     srand(time(NULL));
@@ -217,7 +222,7 @@ void CreateBoard(int *waitTime) {
     //set all matrix to 0
     memset(GameMatrix, 0, MATRIX_COL_SIZE * MATRIX_ROW_SIZE);
     //get random waiting time
-    *waitTime = (rand() % 4) + 1;
+    waitTime = (rand() % 4) + 1;
     //get random 2 squares
     firstSquareRandom = (rand() % 16);
     secondSquareRandom = (rand() % 16);
@@ -233,7 +238,6 @@ void CreateBoard(int *waitTime) {
     GameMatrix[secondX][secondY] = 2;
 
     PrintMazeLine();
-
 }
 
 int Check2NeighborsInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
@@ -269,12 +273,11 @@ void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int dire
         GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
         GameMatrix[firstRowLocation][j] = 0;
         if (direction == 1) {
-            UpdateCountForUp(&firstRowLocation, &designateRowLoc);
+            UpdateCountForUpAndLeft(&firstRowLocation, &designateRowLoc);
 
         } else {
-            UpdateCountForDown(&firstRowLocation, &designateRowLoc);
+            UpdateCountForDownAndRight(&firstRowLocation, &designateRowLoc);
         }
-
     }
 }
 
