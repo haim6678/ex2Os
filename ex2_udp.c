@@ -93,6 +93,7 @@ void ManageGame(int *wait, __pid_t pid) {
     while (1) {
         //time past
         if () {
+
             pastTime = 1;
             TimePassed(wait, pid);
         }
