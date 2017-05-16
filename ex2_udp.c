@@ -44,11 +44,11 @@ int Check2NeighborsInRow(int colLocation, int secLocation, int i, int direction)
 void UpdateCountForUp(int *first, int *sec);
 
 void UpdateCountForDown(int *first, int *sec);
-
+char direction;
 int main(int argc, char *argv[]) {
 
     __pid_t alertPid;
-    int waitTime;
+    unsigned int waitTime;
     if (argc < 2) {
         perror("not enough parameters");
     }
@@ -113,22 +113,40 @@ void CheckKey(char *key) {
     //todo check key and copy to arr
 }
 
-void ManageGame(int *wait, __pid_t pid) {
-    int pastTime = 1;
+void AlarmHandler(int sig) {
+    signal(SIGALRM, AlarmHandler);
+    srand(time(NULL));
+    int temp;
+    int XRandom;
+    int YRandom;
 
+    do {
+        temp = (rand() % 16);
+        XRandom = temp / MATRIX_ROW_SIZE;
+        YRandom = temp % MATRIX_ROW_SIZE;
+    } while (GameMatrix[XRandom][YRandom] != 0);
+
+    GameMatrix[XRandom][YRandom] = 2;
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+void ManageGame(int *waitTime, __pid_t pid) {
+
+    int userPressedKey;
     char key[16];
+    signal(SIGALRM, AlarmHandler);
     while (1) {
-        //time past
-        if () {
 
-            pastTime = 1;
-            TimePassed(wait, pid);
-        }
+        alarm(*waitTime);
+        system("stty cbreak -echo");
+        direction =
+        system("stty cooked echo");
         //user pressed key
-        if () {
+        if (userPressedKey == 1) {
             CheckKey(key);
-            pastTime = 1;
-            //todo check movement and open thread to handle?????
+            alarm(0);
+            //todo does setting movement need to open thread to handle?????
             if (strcmp("up", key) == 0) {
                 MoveUp();
 
@@ -142,15 +160,18 @@ void ManageGame(int *wait, __pid_t pid) {
                 MoveRight();
 
             } else if (strcmp("new", key)) {
-                CreateBoard(wait);
-                if (kill(pid, SIGUSR1) < 0) {
-                    //todo handle error
-                }
+
             }
-            //אם הם אותו מספר- מתאחדים. אם זה מספר שנוצר ע"י תזוזוה הוא לא מתאחד
+        }
+        srand(time(NULL));
+        *waitTime = (rand() % 4) + 1;
+        PrintMazeLine(); //make shure
+        if (kill(pid, SIGUSR1) < 0) {
+            //todo handle error
         }
     }
 }
+#pragma clang diagnostic pop
 
 void HandleClose(int sigNum) {
     write(1, "BYE BYE", strlen("BYE BYE"));
