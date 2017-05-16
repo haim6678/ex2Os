@@ -39,6 +39,8 @@ void CheckKey(char *key);
 
 int Check2NeighborsInCol(int rowLocation, int secondRowLoc, int j, int direc);
 
+int Check2NeighborsInRow(int colLocation, int secLocation, int i, int direction);
+
 void UpdateCountForUp(int *first, int *sec);
 
 void UpdateCountForDown(int *first, int *sec);
@@ -219,9 +221,9 @@ int Check2NeighborsInCol(int firstRowLocation, int designateRowLoc, int j, int d
         GameMatrix[designateRowLoc][j] = 2 * GameMatrix[designateRowLoc][j];
         GameMatrix[firstRowLocation][j] = 0;
         if (direction == 1) {
-            PushToEmptyInCol(firstRowLocation + 1, firstRowLocation, j, direction);
+            PushToEmptyInCol(firstRowLocation, firstRowLocation + 1, j, direction);
         } else {
-            (firstRowLocation - 1, firstRowLocation, j, direction);
+            PushToEmptyInCol(firstRowLocation, firstRowLocation - 1, j, direction);
         }
         return 1;
     }
@@ -302,11 +304,25 @@ void MoveDown() {
     }
 }
 
+int Check2NeighborsInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
+    if (GameMatrix[i][firstColLocatio] == GameMatrix[i][designateColLoc]) {
+        GameMatrix[i][designateColLoc] = 2 * GameMatrix[i][designateColLoc];
+        GameMatrix[i][firstColLocatio] = 0;
+        if (direction == 1) {
+            PushToEmptyInRow(firstColLocatio, firstColLocatio + 1, i, direction);
+        } else {
+            PushToEmptyInRow(firstColLocatio, firstColLocatio - 1, i, direction);
+        }
+        return 1;
+    }
+    return 0;
+}
+
 void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
     while ((firstColLocatio >= 0) && (firstColLocatio < MATRIX_COL_SIZE) &&
            (designateColLoc >= 0) && (designateColLoc < MATRIX_COL_SIZE)) {
 
-        GameMatrix[i][firstColLocatio] = GameMatrix[i][designateColLoc];
+        GameMatrix[i][designateColLoc] = GameMatrix[i][firstColLocatio];
         GameMatrix[i][firstColLocatio] = 0;
         if (direction == 1) {
             UpdateCountForUpAndLeft(&firstColLocatio, &designateColLoc);
@@ -336,11 +352,29 @@ void MoveLeft() {
                         colLocation++;
                     }
                 }
-
             }
         }
     }
+}
 
-    void MoveRight() {
-
+void MoveRight() {
+    int i = 0;
+    int colLocation;
+    //iterate over all the rows
+    for (i; i < MATRIX_ROW_SIZE; i++) {
+        //for every row go all over the columns
+        for (colLocation = 0; colLocation < MATRIX_COL_SIZE; colLocation++) {
+            //if the row above has empty space then push it up and push everything from bottom to top
+            if ((GameMatrix[i][colLocation] != 0) && (GameMatrix[i][colLocation + 1] == 0)) {
+                PushToEmptyInRow(colLocation, colLocation + 1, i, 0);
+                //if the row above has numeric val then check if need to unify them
+            } else if ((GameMatrix[i][colLocation] != 0) && (GameMatrix[i][colLocation + 1] != 0)) {
+                if (Check2NeighborsInRow(colLocation, colLocation + 1, i, 0) == 1) {
+                    if (GameMatrix[i][colLocation + 1] != 0) {
+                        colLocation++;
+                    }
+                }
+            }
+        }
     }
+}
