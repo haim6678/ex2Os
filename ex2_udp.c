@@ -45,21 +45,21 @@ void HandleUserInput(int sig);
 
 void AlarmHandler(int sig);
 
-char inputDirection;
+int inputDirection;
 unsigned int waitTime;
 __pid_t SecondProcessPid;
 
 int main(int argc, char *argv[]) {
 
 
-    if (argc < 2) {
+    /*if (argc < 2) {
         perror("not enough parameters");
-    }
+    }*/
 
-    SecondProcessPid = atoi(argv[1]);
+    //SecondProcessPid = atoi(argv[1]);
     //create the board
     CreateBoard();
-    kill(SecondProcessPid, SIGUSR1);
+    //kill(SecondProcessPid, SIGUSR1);
     //set the handle in sigint
     SetHandler();
     //todo how the user is getting the maze
@@ -86,10 +86,9 @@ void SetHandler() {
 
     //set for sigint
     if (sigaction(SIGINT, &CloseAction, NULL) != 0) {
-        perror("faild in sigaction");
+        perror("failed in sigaction");
         exit(-1);
     }
-
 }
 
 
@@ -118,7 +117,7 @@ void HandleUserInput(int sig) {
 
     //todo what if it's not legal key need also set alarm to 0?
     signal(SIGUSR1, HandleUserInput);
-
+    alarm(0);
     switch (inputDirection) {
         case 'w' : //todo small and capital letters?
         case 'W':
@@ -143,7 +142,33 @@ void HandleUserInput(int sig) {
         default:
             break;
     }
-    kill(SecondProcessPid, SIGUSR1);
+    // kill(SecondProcessPid, SIGUSR1);
+    int i = 0;
+    Printt();
+}
+
+void Printt() {
+    char temp[32];
+    int i = 0;
+    //todo handle write errors
+    for (i; i < 4; i++) {
+        write(STDOUT_FILENO, "|", strlen("|"));
+        int j = 0;
+        for (j; j < 4; j++) {
+            printf("%s", " ");
+            if ((GameMatrix[i][j]) > 0) {
+                memset(temp, 32, 0);
+                sprintf(temp, "%04d", GameMatrix[i][j]);
+                write(STDOUT_FILENO, temp, strlen(temp));
+            } else {
+                write(STDOUT_FILENO, "    ", strlen("    "));
+            }
+            write(STDOUT_FILENO, " ", strlen(" "));
+            write(STDOUT_FILENO, "|", strlen("|"));
+        }
+        write(STDOUT_FILENO, "\n", strlen("\n"));
+    }
+    write(STDOUT_FILENO, "\n", strlen("\n"));
 }
 
 #pragma clang diagnostic push
@@ -154,21 +179,42 @@ void ManageGame() {
     signal(SIGALRM, AlarmHandler); //todo do i need to block other signals while handling?
     signal(SIGUSR1, HandleUserInput); //todo do i need to block other signals while handling?
     __pid_t myPid = getpid();
+    int i = 0;
+    char temp[32];
+    GameMatrix[0][0] = 4;
+    GameMatrix[1][0] = 4;
+    GameMatrix[0][1] = 16;
+    GameMatrix[0][3] = 4;
+    Printt();
     while (1) {
+        waitTime = 100;
+        if (i > 1) {
+            i = 0;
+            int temp;
+            int XRandom;
+            int YRandom;
 
-        //todo does setting movement need to open thread to handle?????
-        alarm(waitTime);
-        system("stty cbreak -echo");
+            do {
+                temp = (rand() % 16);
+                XRandom = temp / MATRIX_ROW_SIZE;
+                YRandom = temp % MATRIX_ROW_SIZE;
+            } while (GameMatrix[XRandom][YRandom] != 0);
+
+           // GameMatrix[XRandom][YRandom] = 2;
+        }
+        //alarm(waitTime);
+        system("/bin/stty raw");
         inputDirection = getchar(); //todo what happend while waiting and then getting signal do we go back here or skip the getchr?
-        system("stty cooked echo");
+        system("/bin/stty cooked");
         kill(myPid, SIGUSR1);
         alarm(0);
         srand(time(NULL));
         waitTime = (rand() % 4) + 1;
-        PrintMazeLine(); //make shure
-        if (kill(SecondProcessPid, SIGUSR1) < 0) {
-            //todo handle error
-        }
+        i++;
+        //PrintMazeLine(); //make shure
+        //if (kill(SecondProcessPid, SIGUSR1) < 0) {
+        //todo handle error
+        //}
     }
 }
 
@@ -215,7 +261,7 @@ void CreateBoard() {
     int secondX;
     int secondY;
     //set all matrix to 0
-    memset(GameMatrix, 0, MATRIX_COL_SIZE * MATRIX_ROW_SIZE);
+    memset(GameMatrix, 0, sizeof(GameMatrix[0][0])*MATRIX_COL_SIZE * MATRIX_ROW_SIZE);
     //get random waiting time
     waitTime = (rand() % 4) + 1;
     //get random 2 squares
@@ -229,21 +275,22 @@ void CreateBoard() {
     firstY = firstSquareRandom % MATRIX_ROW_SIZE;
     secondX = secondSquareRandom / MATRIX_ROW_SIZE;
     secondY = secondSquareRandom % MATRIX_ROW_SIZE;
-    GameMatrix[firstX][firstY] = 2;
-    GameMatrix[secondX][secondY] = 2;
+    //GameMatrix[firstX][firstY] = 2;
+    //GameMatrix[secondX][secondY] = 2;
 
-    PrintMazeLine();
+    //PrintMazeLine();
 }
 
 int Check2NeighborsInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
 
-    if (GameMatrix[firstRowLocation][j] == GameMatrix[designateRowLoc][j]) {
+    if ((designateRowLoc < MATRIX_ROW_SIZE) && (designateRowLoc >= 0) &&
+        (GameMatrix[firstRowLocation][j] == GameMatrix[designateRowLoc][j])) {
         GameMatrix[designateRowLoc][j] = 2 * GameMatrix[designateRowLoc][j];
         GameMatrix[firstRowLocation][j] = 0;
         if (direction == 1) {
-            PushToEmptyInCol(firstRowLocation, firstRowLocation + 1, j, direction);
+            PushToEmptyInCol(firstRowLocation + 1, firstRowLocation, j, direction);
         } else {
-            PushToEmptyInCol(firstRowLocation, firstRowLocation - 1, j, direction);
+            PushToEmptyInCol(firstRowLocation - 1, firstRowLocation, j, direction);
         }
         return 1;
     }
@@ -264,7 +311,7 @@ void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int dire
 
     while ((firstRowLocation >= 0) && (firstRowLocation < MATRIX_ROW_SIZE) &&
            (designateRowLoc >= 0) && (designateRowLoc < MATRIX_ROW_SIZE)) {
-
+        Printt();
         GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
         GameMatrix[firstRowLocation][j] = 0;
         if (direction == 1) {
@@ -282,7 +329,7 @@ void MoveUp() {
     //iterate on every column
     for (j; j < MATRIX_COL_SIZE; j++) {
         //check from bottom to top on each row
-        for (rowLocation = MATRIX_ROW_SIZE - 1; rowLocation <= 1; rowLocation--) {
+        for (rowLocation = MATRIX_ROW_SIZE - 1; rowLocation >= 0; rowLocation--) {
             //if the row above has empty space then push it up and push everything from bottom to top
             if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation - 1][j] == 0)) {
                 PushToEmptyInCol(rowLocation, rowLocation - 1, j, 1);
@@ -290,7 +337,7 @@ void MoveUp() {
             } else if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation - 1][j] != 0)) {
                 if (Check2NeighborsInCol(rowLocation, rowLocation - 1, j, 1) == 1) {
                     //if the next row has a numeric val the go over it
-                    if (GameMatrix[rowLocation - 1][j] != 0) {
+                    if ((rowLocation - 2 >= 0) && (GameMatrix[rowLocation - 2][j] != 0)) {
                         rowLocation--;
                     }
                 }
@@ -313,7 +360,7 @@ void MoveDown() {
                 //if the row above has numeric val then check if need to unify them
             } else if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation + 1][j] != 0)) {
                 if (Check2NeighborsInCol(rowLocation, rowLocation + 1, j, 0) == 1) {
-                    if (GameMatrix[rowLocation + 1][j] != 0) {
+                    if ((rowLocation + 2 < MATRIX_ROW_SIZE) && (GameMatrix[rowLocation + 2][j] != 0)) {
                         rowLocation++;
                     }
                 }
@@ -323,13 +370,14 @@ void MoveDown() {
 }
 
 int Check2NeighborsInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
-    if (GameMatrix[i][firstColLocatio] == GameMatrix[i][designateColLoc]) {
+    if ((designateColLoc < MATRIX_COL_SIZE) && (designateColLoc >= 0) &&
+        (GameMatrix[i][firstColLocatio] == GameMatrix[i][designateColLoc])) {
         GameMatrix[i][designateColLoc] = 2 * GameMatrix[i][designateColLoc];
         GameMatrix[i][firstColLocatio] = 0;
         if (direction == 1) {
-            PushToEmptyInRow(firstColLocatio, firstColLocatio + 1, i, direction);
+            PushToEmptyInRow(firstColLocatio + 1, firstColLocatio, i, direction);
         } else {
-            PushToEmptyInRow(firstColLocatio, firstColLocatio - 1, i, direction);
+            PushToEmptyInRow(firstColLocatio - 1, firstColLocatio, i, direction);
         }
         return 1;
     }
@@ -340,8 +388,10 @@ void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direc
     while ((firstColLocatio >= 0) && (firstColLocatio < MATRIX_COL_SIZE) &&
            (designateColLoc >= 0) && (designateColLoc < MATRIX_COL_SIZE)) {
 
+
         GameMatrix[i][designateColLoc] = GameMatrix[i][firstColLocatio];
         GameMatrix[i][firstColLocatio] = 0;
+
         if (direction == 1) {
             UpdateCountForUpAndLeft(&firstColLocatio, &designateColLoc);
 
@@ -359,15 +409,15 @@ void MoveLeft() {
     for (i; i < MATRIX_ROW_SIZE; i++) {
 
         //for every row go all over the columns
-        for (colLocation = MATRIX_COL_SIZE - 1; colLocation <= 0; colLocation--) {
+        for (colLocation = MATRIX_COL_SIZE - 1; colLocation >= 0; colLocation--) {
             //if the row above has empty space then push it up and push everything from bottom to top
             if ((GameMatrix[i][colLocation] != 0) && (GameMatrix[i][colLocation - 1] == 0)) {
                 PushToEmptyInRow(colLocation, colLocation - 1, i, 1);
                 //if the row above has numeric val then check if need to unify them
             } else if ((GameMatrix[i][colLocation] != 0) && (GameMatrix[i][colLocation - 1] != 0)) {
                 if (Check2NeighborsInRow(colLocation, colLocation - 1, i, 1) == 1) {
-                    if (GameMatrix[i][colLocation - 1] != 0) {
-                        colLocation++;
+                    if ((colLocation - 2 >= 0) && (GameMatrix[i][colLocation - 2] != 0)) {
+                        colLocation--;
                     }
                 }
             }
@@ -388,7 +438,7 @@ void MoveRight() {
                 //if the row above has numeric val then check if need to unify them
             } else if ((GameMatrix[i][colLocation] != 0) && (GameMatrix[i][colLocation + 1] != 0)) {
                 if (Check2NeighborsInRow(colLocation, colLocation + 1, i, 0) == 1) {
-                    if (GameMatrix[i][colLocation + 1] != 0) {
+                    if ((colLocation + 2 < MATRIX_COL_SIZE) && (GameMatrix[i][colLocation + 2] != 0)) {
                         colLocation++;
                     }
                 }
