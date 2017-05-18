@@ -176,6 +176,7 @@ void HandleUserInput(int sig) {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
+
 /**
  * the operation_ the function that runs the game.
  * get user key and respond.
@@ -274,48 +275,10 @@ void CreateBoard() {
 
 }
 
-int Check2NeighborsInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
 
-    if ((designateRowLoc < MATRIX_ROW_SIZE) && (designateRowLoc >= 0) &&
-        (GameMatrix[firstRowLocation][j] == GameMatrix[designateRowLoc][j])) {
-        GameMatrix[designateRowLoc][j] = 2 * GameMatrix[designateRowLoc][j];
-        GameMatrix[firstRowLocation][j] = 0;
-        if (direction == 1) {
-            PushToEmptyInCol(firstRowLocation + 1, firstRowLocation, j, direction);
-        } else {
-            PushToEmptyInCol(firstRowLocation - 1, firstRowLocation, j, direction);
-        }
-        return 1;
-    }
-    return 0;
-}
-
-void UpdateCountForUpAndLeft(int *first, int *sec) {
-    (*first)++;
-    (*sec)++;
-}
-
-void UpdateCountForDownAndRight(int *first, int *sec) {
-    (*first)--;
-    (*sec)--;
-}
-
-void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
-
-    while ((firstRowLocation >= 0) && (firstRowLocation < MATRIX_ROW_SIZE) &&
-           (designateRowLoc >= 0) && (designateRowLoc < MATRIX_ROW_SIZE)) {
-
-        GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
-        GameMatrix[firstRowLocation][j] = 0;
-        if (direction == 1) {
-            UpdateCountForUpAndLeft(&firstRowLocation, &designateRowLoc);
-
-        } else {
-            UpdateCountForDownAndRight(&firstRowLocation, &designateRowLoc);
-        }
-    }
-}
-
+/**
+ * the operation - moves the board up
+ */
 void MoveUp() {
     int j = 0;
     int rowLocation;
@@ -339,12 +302,14 @@ void MoveUp() {
     }
 }
 
+/**
+ * the operation - moves the board down
+ */
 void MoveDown() {
     int j = 0;
     int rowLocation;
     //iterate on every column
     for (j; j < MATRIX_COL_SIZE; j++) {
-
         //check from top to bottom on each row
         for (rowLocation = 0; rowLocation < MATRIX_ROW_SIZE; rowLocation++) {
             //if the row above has empty space then push it up and push everything from bottom to top
@@ -362,39 +327,9 @@ void MoveDown() {
     }
 }
 
-int Check2NeighborsInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
-    if ((designateColLoc < MATRIX_COL_SIZE) && (designateColLoc >= 0) &&
-        (GameMatrix[i][firstColLocatio] == GameMatrix[i][designateColLoc])) {
-        GameMatrix[i][designateColLoc] = 2 * GameMatrix[i][designateColLoc];
-        GameMatrix[i][firstColLocatio] = 0;
-        if (direction == 1) {
-            PushToEmptyInRow(firstColLocatio + 1, firstColLocatio, i, direction);
-        } else {
-            PushToEmptyInRow(firstColLocatio - 1, firstColLocatio, i, direction);
-        }
-        return 1;
-    }
-    return 0;
-}
-
-void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
-    while ((firstColLocatio >= 0) && (firstColLocatio < MATRIX_COL_SIZE) &&
-           (designateColLoc >= 0) && (designateColLoc < MATRIX_COL_SIZE)) {
-
-
-        GameMatrix[i][designateColLoc] = GameMatrix[i][firstColLocatio];
-        GameMatrix[i][firstColLocatio] = 0;
-
-        if (direction == 1) {
-            UpdateCountForUpAndLeft(&firstColLocatio, &designateColLoc);
-
-        } else {
-            UpdateCountForDownAndRight(&firstColLocatio, &designateColLoc);
-        }
-
-    }
-}
-
+/**
+ * the operation - moves the board left
+ */
 void MoveLeft() {
     int i = 0;
     int colLocation;
@@ -418,6 +353,9 @@ void MoveLeft() {
     }
 }
 
+/**
+ * the operation - moves the board right
+ */
 void MoveRight() {
     int i = 0;
     int colLocation;
@@ -438,4 +376,131 @@ void MoveRight() {
             }
         }
     }
+}
+
+/**
+ *
+ * the input - firstRowLocation - firs col index
+ *             designateRowLoc  - second col index
+ *              i - the row index
+ *             direction - say if we need to go left or right to col
+ * the output - 1 if we combined 2 0 otherwise
+ * the operation - gets 2 indexes in a given row and check if need to combine them
+ *                 if we need then combine, and push the other to the empty space created.
+ */
+int Check2NeighborsInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
+    //check if similar
+    if ((designateColLoc < MATRIX_COL_SIZE) && (designateColLoc >= 0) &&
+        (GameMatrix[i][firstColLocatio] == GameMatrix[i][designateColLoc])) {
+        GameMatrix[i][designateColLoc] = 2 * GameMatrix[i][designateColLoc];
+        //check if need to go right or left and update counters and push to empty space
+        GameMatrix[i][firstColLocatio] = 0;
+        if (direction == 1) {
+            PushToEmptyInRow(firstColLocatio + 1, firstColLocatio, i, direction);
+        } else {
+            PushToEmptyInRow(firstColLocatio - 1, firstColLocatio, i, direction);
+        }
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ *
+ * the input - firstRowLocation - firs row index
+ *             designateRowLoc  - second row index
+ *              j - the col index
+ *             direction - say if we need to go up or down to col
+ * the output - 1 if we combined 2 0 otherwise
+ * the operation - gets 2 indexes in a given col and check if need to combine theb
+ *                 if we need then combine and push the other to the empty space created.
+ */
+int Check2NeighborsInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
+    //check if similar
+    if ((designateRowLoc < MATRIX_ROW_SIZE) && (designateRowLoc >= 0) &&
+        (GameMatrix[firstRowLocation][j] == GameMatrix[designateRowLoc][j])) {
+        GameMatrix[designateRowLoc][j] = 2 * GameMatrix[designateRowLoc][j];
+        GameMatrix[firstRowLocation][j] = 0;
+        //check if need to go up or down and update counters and push to empty space
+        if (direction == 1) {
+            PushToEmptyInCol(firstRowLocation + 1, firstRowLocation, j, direction);
+        } else {
+            PushToEmptyInCol(firstRowLocation - 1, firstRowLocation, j, direction);
+        }
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ *
+ * the input - firstRowLocation - firs col index
+ *             designateRowLoc  - second col index
+ *              i - the row index
+ *             direction - say if we need to go left or right to col
+ * the output - 1 if we combined 2 0 otherwise
+ * the operation - gets 2 indexes in a given col and push in a loop everyone 1 step left/right.
+ */
+void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direction) {
+    //run in a loop until you finish with to row and move each one one step
+    while ((firstColLocatio >= 0) && (firstColLocatio < MATRIX_COL_SIZE) &&
+           (designateColLoc >= 0) && (designateColLoc < MATRIX_COL_SIZE)) {
+        GameMatrix[i][designateColLoc] = GameMatrix[i][firstColLocatio];
+        GameMatrix[i][firstColLocatio] = 0;
+        //check if need to go right or left and update counters
+        if (direction == 1) {
+            UpdateCountForUpAndLeft(&firstColLocatio, &designateColLoc);
+
+        } else {
+            UpdateCountForDownAndRight(&firstColLocatio, &designateColLoc);
+        }
+
+    }
+}
+
+/**
+ *
+ * the input - firstRowLocation - firs row index
+ *             designateRowLoc  - second row index
+ *              j - the col index
+ *             direction - say if we need to go up or down to col
+ * the output - 1 if we combined 2 0 otherwise
+ * the operation - gets 2 indexes in a given col and push in a loop everyone 1 step up/down.
+ */
+void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
+    //run in a loop until you finish with to col and move each one one step
+    while ((firstRowLocation >= 0) && (firstRowLocation < MATRIX_ROW_SIZE) &&
+           (designateRowLoc >= 0) && (designateRowLoc < MATRIX_ROW_SIZE)) {
+        GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
+        GameMatrix[firstRowLocation][j] = 0;
+        //check if need to go up or down and update counters
+        if (direction == 1) {
+            UpdateCountForUpAndLeft(&firstRowLocation, &designateRowLoc);
+
+        } else {
+            UpdateCountForDownAndRight(&firstRowLocation, &designateRowLoc);
+        }
+    }
+}
+
+/**
+ *
+ * the input first - first counter
+ *            sec  - second counter
+ * the operation - gets 2 numbers and updates them upward
+ */
+void UpdateCountForUpAndLeft(int *first, int *sec) {
+    (*first)++;
+    (*sec)++;
+}
+
+/**
+ *
+ * the input first - first counter
+ *            sec  - second counter
+ * the operation - gets 2 numbers and updates them down
+ */
+void UpdateCountForDownAndRight(int *first, int *sec) {
+    (*first)--;
+    (*sec)--;
 }
