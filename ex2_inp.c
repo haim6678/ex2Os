@@ -22,7 +22,7 @@ void GetFromStdin();
 void SetSiguserSinal();
 
 int GameMatrix[MATRIX_ROW_SIZE][MATRIX_COL_SIZE] = {0};
-int fd;
+
 
 /**
  *
@@ -32,22 +32,20 @@ int fd;
 int main() {
 
 
-    fd = open("boardFile.txt", O_CREAT | O_RDONLY, 0666);
+    int fd = open("boardFile.txt", O_CREAT | O_RDONLY, 0666);
     if (fd < 0) {
         //todo handle
     }
-
-    printf("%s \n", " create file in inp");
+    if (dup2(fd, 0) < 0) {
+        //todo handle
+    }
     //declare on the sigaction members
     struct sigaction CloseAction;
     sigset_t closeBlock;
-
     //fill the sett with all signals
     sigfillset(&closeBlock);
-
     //set the handling function for sigint
-
-    CloseAction.sa_handler = HandleClose; //todo need to reset after every handle??
+    CloseAction.sa_handler = HandleClose;
     CloseAction.sa_mask = closeBlock;
     CloseAction.sa_flags = 0;
 
@@ -58,7 +56,6 @@ int main() {
     }
 
     SetSiguserSinal();
-    printf("%s \n", "start running inp");
     //run the process indefinitely
     while (1) {
 
@@ -80,7 +77,6 @@ void SetSiguserSinal() {
     InputAction.sa_handler = HandleSiguser1;
     InputAction.sa_mask = inputBlock;
     InputAction.sa_flags = 0;
-
     //remove the wanted signals
     sigdelset(&inputBlock, SIGINT);
 
@@ -96,7 +92,7 @@ void SetSiguserSinal() {
  * the operation - this function is handling the recieve of the sigusr1 signal
  */
 void HandleSiguser1(int sigNum) {
-    printf("%s \n", "got siguser signal");
+
     SetSiguserSinal();
     GetFromStdin();
     PrintMatrix();
@@ -112,9 +108,6 @@ void HandleClose(int sigNum) {
     exit(0);
 }
 
-int ConvertNum(char *buf) {
-    return atoi(buf);
-}
 
 /**
  * the operation - after getting a signal we need to get the current board
@@ -128,12 +121,12 @@ void GetFromStdin() {
     char num[5];
     int number = 0;
     int numLength = 0;
-    if (read(fd, &buff, 1) < 0) {
+    if (read(STDIN_FILENO, &buff, 1) < 0) {
         //todo handle error
     }
     while ((buff != '\0') && (buff != '\n')) {
         if (buff == ',') {
-            number = ConvertNum(num);
+            number = atoi(num);
             numLength = 0;
             memset(num, 0, 5);
             GameMatrix[i][j] = number;
@@ -142,7 +135,7 @@ void GetFromStdin() {
                 i++;
                 j = 0;
             }
-            if (read(fd, &buff, 1) < 0) {
+            if (read(STDIN_FILENO, &buff, 1) < 0) {
                 //todo handle error
             }
             continue;
@@ -153,13 +146,10 @@ void GetFromStdin() {
             strcpy(num, &buff);
         }
         numLength++;
-        if (read(fd, &buff, 1) < 0) {
+        if (read(STDIN_FILENO, &buff, 1) < 0) {
             //todo handle error
         }
     }
-
-
-    printf("%s \n", "finish parsing board inp");
 }
 
 /**
