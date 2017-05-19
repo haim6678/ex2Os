@@ -4,10 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 
 
 #define MATRIX_ROW_SIZE 4
 #define MATRIX_COL_SIZE 4
+#define WRITE_SIZE 128
 
 void ManageGame();
 
@@ -48,6 +50,7 @@ void AlarmHandler(int sig);
 int inputDirection;
 unsigned int waitTime;
 __pid_t SecondProcessPid;
+int fd;
 
 /**
  *
@@ -61,15 +64,24 @@ int main(int argc, char *argv[]) {
 
     if (argc < 2) {
         perror("not enough parameters");
+        exit(0);
     }
 
+    //printf("%s \n", "open file upd");
+    fd = open("boardFile.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    if (fd < 0) {
+        //todo handle
+    }
     SecondProcessPid = atoi(argv[1]);
     //create the board
+    //printf("%s \n", "create board upd");
     CreateBoard();
+    //printf("%s \n", "print board in line upd");
     PrintMazeLine();
-    kill(SecondProcessPid, SIGUSR1);
+    //kill(SecondProcessPid, SIGUSR1);
     //set the handle in sigint
     SetHandler();
+    //printf("%s \n", "run game upd");
     //run the game in a loop
     ManageGame();
     return 0;
@@ -109,24 +121,30 @@ void SetHandler() {
  */
 void AlarmHandler(int sig) {
     //redefine the handler
-    signal(SIGALRM, AlarmHandler);
+    //printf("%s \n", "got alarm sig upd");
+    SetAlarmSignal();
     srand(time(NULL));
     int temp;
     int XRandom;
     int YRandom;
     //make sure the spot is empty
+    //printf("%s \n", " gessing new pos");
     do {
         temp = (rand() % 16);
         XRandom = temp / MATRIX_ROW_SIZE;
         YRandom = temp % MATRIX_ROW_SIZE;
     } while (GameMatrix[XRandom][YRandom] != 0);
-
+    //printf("%s \n", "finish gessing new pos");
+    //printf("%s \n", "new pos is:");
+    //printf("%d,%d", XRandom, YRandom);
     GameMatrix[XRandom][YRandom] = 2;
     //write the board and notify the other process
     PrintMazeLine();
     if (kill(SecondProcessPid, SIGUSR1) < 0) {
         //todo handle error
     }
+
+    waitTime = 5;
     //reset the wait time
     alarm(waitTime);
 }
@@ -139,8 +157,9 @@ void AlarmHandler(int sig) {
  */
 void HandleUserInput(int sig) {
 
+    //printf("%s \n", "we got input");
     //todo what if it's not legal key need also set alarm to 0?
-    signal(SIGUSR1, HandleUserInput);
+    SetUsrSignal();
     alarm(0);
     switch (inputDirection) {
         case 'w' : //todo small and capital letters?
@@ -166,13 +185,55 @@ void HandleUserInput(int sig) {
         default:
             break;
     }
+    alarm(0);
+    //printf("%s \n", "convert board after getting movement");
     //write the board and notify the other process
     PrintMazeLine();
     if (kill(SecondProcessPid, SIGUSR1) < 0) {
         //todo handle
     }
+
 }
 
+void SetAlarmSignal() {
+    struct sigaction alarmAction;
+    sigset_t alarmBlock;
+
+    //fill the sett with all signals
+    sigfillset(&alarmBlock);
+    sigdelset(&alarmBlock, SIGINT);
+    //set the handling function for sigint
+
+    alarmAction.sa_handler = AlarmHandler; //todo need to reset after every handle??
+    alarmAction.sa_mask = alarmBlock;
+    alarmAction.sa_flags = 0;
+
+    //set for sigint
+    if (sigaction(SIGALRM, &alarmAction, NULL) != 0) {
+        perror("faild in sigaction");
+        exit(-1);
+    }
+}
+
+void SetUsrSignal() {
+    struct sigaction alarmAction;
+    sigset_t alarmBlock;
+
+    //fill the sett with all signals
+    sigfillset(&alarmBlock);
+    sigdelset(&alarmBlock, SIGINT);
+    //set the handling function for sigint
+
+    alarmAction.sa_handler = HandleUserInput; //todo need to reset after every handle??
+    alarmAction.sa_mask = alarmBlock;
+    alarmAction.sa_flags = 0;
+
+    //set for sigint
+    if (sigaction(SIGUSR1, &alarmAction, NULL) != 0) {
+        perror("faild in sigaction");
+        exit(-1);
+    }
+}
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -184,11 +245,13 @@ void HandleUserInput(int sig) {
  */
 void ManageGame() {
 
-    signal(SIGALRM, AlarmHandler); //todo do i need to block other signals while handling?
-    signal(SIGUSR1, HandleUserInput); //todo do i need to block other signals while handling?
+    SetAlarmSignal();
+    SetUsrSignal();
     __pid_t myPid = getpid();
+    ////printf("%s \n", "get in the manage game loop");
     while (1) {
 
+        waitTime = 5;
         alarm(waitTime);
         system("/bin/stty raw");
         inputDirection = getchar(); //todo what happend while waiting and then getting signal do we go back here or skip the getchr?
@@ -220,25 +283,31 @@ void PrintMazeLine() {
     int i = 0;
     int j;
     int temp;
-    char arr[64];
+    char arr[WRITE_SIZE];//todo check if need to put /0 at start
     char buff[32];
+    memset(arr,0,WRITE_SIZE);
+    arr[0] = '\0';
+
     //write the board game in line format to screen
     for (i; i < MATRIX_ROW_SIZE; i++) {
         for (j = 0; j < MATRIX_COL_SIZE; j++) {
             temp = GameMatrix[i][j];
 
-            snprintf(buff, 32, "%04d", temp);
-            strcpy(arr, buff);
+            memset(buff, 0, 32);
+            snprintf(buff, 4, "%d", temp);
+            strcat(arr, buff);
             //add comma
             if (i != MATRIX_ROW_SIZE - 1 || j != MATRIX_COL_SIZE - 1) {
                 strcat(arr, ",");
             }
             //write number to STDOUT
-            if (write(1, arr, strlen(arr)) < strlen(arr)) {
-                //TODO handle error
-            }
+            //if (write(fd, arr, strlen(arr)) < strlen(arr)) {
+            //TODO handle error
+            //}
         }
     }
+    arr[strlen(arr)] = '\n';
+    write(fd, arr, strlen(arr));
 }
 
 /**
