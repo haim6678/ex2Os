@@ -104,7 +104,7 @@ void HandleSiguser1(int sigNum) {
  * the operation - this function is handling the recieve of the sigint signal
  */
 void HandleClose(int sigNum) {
-    printf("%s", "BYE BYE");
+    printf("%s \n", "BYE BYE");
     exit(0);
 }
 
@@ -116,7 +116,6 @@ void HandleClose(int sigNum) {
 void GetFromStdin() {
     int i = 0;
     int j = 0;
-    printf("%s \n", "reading from file inp");
     char buff;
     char num[5];
     int number = 0;
@@ -160,12 +159,10 @@ void PrintMatrix() {
     int i = 0;
     char temp[32];
     //todo handle write errors
-    printf("%s \n", "printing board");
     for (i; i < 4; i++) {
         write(STDOUT_FILENO, "|", strlen("|"));
         int j = 0;
         for (j; j < 4; j++) {
-            printf("%s", " ");
             if ((GameMatrix[i][j]) > 0) {
                 memset(temp, 32, 0);
                 sprintf(temp, "%04d", GameMatrix[i][j]);
@@ -178,5 +175,4 @@ void PrintMatrix() {
         }
         write(STDOUT_FILENO, "\n", strlen("\n"));
     }
-    printf("%s \n", "finish printing board");
 }
