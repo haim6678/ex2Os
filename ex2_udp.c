@@ -294,6 +294,7 @@ void PrintMazeLine() {
             temp = GameMatrix[i][j];
 
             memset(buff, 0, 32);
+
             snprintf(buff, 4, "%d", temp);
             strcat(arr, buff);
             //add comma
