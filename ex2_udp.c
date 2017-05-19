@@ -243,13 +243,14 @@ void ManageGame() {
 
     SetAlarmSignal();
     SetUsrSignal();
-
+    __pid_t thisPid =getpid();
     while (1) {
 
         alarm(waitTime);
         system("/bin/stty raw");
         inputDirection = getchar();
         system("/bin/stty cooked");
+        kill(thisPid,SIGUSR1);
         alarm(0);
         srand(time(NULL));
         waitTime = (rand() % 4) + 1;
