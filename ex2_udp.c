@@ -74,15 +74,15 @@ int main(int argc, char *argv[]) {
     if (fd < 0) {
         //todo handle
     }
-    if (dup2(fd, 1) < 0) {
-        //todo handle
-    }
+    //if (dup2(fd, 1) < 0) {
+    //todo handle
+    //}
     SecondProcessPid = atoi(argv[1]);
     //create the board
-    CreateBoard();
-    PrintMazeLine();
+    //CreateBoard();
+    //PrintMazeLine();
 
-    kill(SecondProcessPid, SIGUSR1);
+    //kill(SecondProcessPid, SIGUSR1);
     //set the handle in sigint
     SetHandler();
     //run the game in a loop
@@ -138,9 +138,9 @@ void AlarmHandler(int sig) {
     GameMatrix[XRandom][YRandom] = 2;
     //write the board and notify the other process
     PrintMazeLine();
-    if (kill(SecondProcessPid, SIGUSR1) < 0) {
-        //todo handle error
-    }
+    //if (kill(SecondProcessPid, SIGUSR1) < 0) {
+    //todo handle error
+    //}
     waitTime = (rand() % 4) + 1;
     //reset the wait time
     alarm(waitTime);
@@ -185,9 +185,9 @@ void HandleUserInput(int sig) {
     alarm(0);
     //write the board and notify the other process
     PrintMazeLine();
-    if (kill(SecondProcessPid, SIGUSR1) < 0) {
-        //todo handle
-    }
+    //if (kill(SecondProcessPid, SIGUSR1) < 0) {
+    //todo handle
+    //}
 
 }
 
@@ -243,17 +243,24 @@ void ManageGame() {
 
     SetAlarmSignal();
     SetUsrSignal();
-    __pid_t thisPid =getpid();
+    __pid_t thisPid = getpid();
+    GameMatrix[0][1] = 2;
+    //GameMatrix[1][1] = 2;
+    //GameMatrix[2][1] = 2;
+    GameMatrix[3][1] = 2;
+    PrintMatrix();
     while (1) {
 
         alarm(waitTime);
         system("/bin/stty raw");
         inputDirection = getchar();
         system("/bin/stty cooked");
-        kill(thisPid,SIGUSR1);
+        kill(thisPid, SIGUSR1);
         alarm(0);
         srand(time(NULL));
         waitTime = (rand() % 4) + 1;
+        PrintMatrix();
+        waitTime = 10;
     }
 }
 
@@ -342,24 +349,26 @@ void MoveUp() {
     int j = 0;
     int rowLocation;
     //iterate on every column
+
     for (j; j < MATRIX_COL_SIZE; j++) {
+        PushToEmptyInCol(1, 0, j, 1);
         //check from bottom to top on each row
-        for (rowLocation = MATRIX_ROW_SIZE - 1; rowLocation >= 0; rowLocation--) {
-            //if the row above has empty space then push it up and push everything from bottom to top
-            if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation - 1][j] == 0)) {
-                PushToEmptyInCol(rowLocation, rowLocation - 1, j, 1);
-                //if the row above has numeric val then check if need to unify them
-            } else if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation - 1][j] != 0)) {
-                if (Check2NeighborsInCol(rowLocation, rowLocation - 1, j, 1) == 1) {
+        for (rowLocation = 0; rowLocation < MATRIX_ROW_SIZE; rowLocation++) {
+
+
+            if ((GameMatrix[rowLocation][j] != 0) && (rowLocation + 1 < MATRIX_ROW_SIZE) &&
+                (GameMatrix[rowLocation + 1][j] != 0)) {
+                if (Check2NeighborsInCol(rowLocation + 1, rowLocation, j, 1) == 1) {
                     //if the next row has a numeric val the go over it
-                    if ((rowLocation - 2 >= 0) && (GameMatrix[rowLocation - 2][j] != 0)) {
-                        rowLocation--;
+                    if ((rowLocation + 1 >= MATRIX_ROW_SIZE) && (GameMatrix[rowLocation + 1][j] != 0)) {
+                        rowLocation++;
                     }
                 }
             }
         }
     }
 }
+
 
 /**
  * the operation - moves the board down
@@ -369,22 +378,21 @@ void MoveDown() {
     int rowLocation;
     //iterate on every column
     for (j; j < MATRIX_COL_SIZE; j++) {
+        PushToEmptyInCol(MATRIX_ROW_SIZE - 2, MATRIX_ROW_SIZE - 1, j, 0);
         //check from top to bottom on each row
-        for (rowLocation = 0; rowLocation < MATRIX_ROW_SIZE; rowLocation++) {
-            //if the row above has empty space then push it up and push everything from bottom to top
-            if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation + 1][j] == 0)) {
-                PushToEmptyInCol(rowLocation, rowLocation + 1, j, 0);
-                //if the row above has numeric val then check if need to unify them
-            } else if ((GameMatrix[rowLocation][j] != 0) && (GameMatrix[rowLocation + 1][j] != 0)) {
-                if (Check2NeighborsInCol(rowLocation, rowLocation + 1, j, 0) == 1) {
-                    if ((rowLocation + 2 < MATRIX_ROW_SIZE) && (GameMatrix[rowLocation + 2][j] != 0)) {
-                        rowLocation++;
+        for (rowLocation = MATRIX_ROW_SIZE - 1; rowLocation > 0; rowLocation--) {
+            //if the row above has numeric val then check if need to unify them
+            if ((GameMatrix[rowLocation][j] != 0) && (rowLocation - 1 > 0) && (GameMatrix[rowLocation - 1][j] != 0)) {
+                if (Check2NeighborsInCol(rowLocation - 1, rowLocation, j, 0) == 1) {
+                    if ((rowLocation - 1 > 0) && (GameMatrix[rowLocation - 1][j] != 0)) {
+                        rowLocation--;
                     }
                 }
             }
         }
     }
 }
+
 
 /**
  * the operation - moves the board left
@@ -468,7 +476,7 @@ int Check2NeighborsInRow(int firstColLocatio, int designateColLoc, int i, int di
  *
  * the input - firstRowLocation - firs row index
  *             designateRowLoc  - second row index
- *              j - the col index
+ *             j - the col index
  *             direction - say if we need to go up or down to col
  * the output - 1 if we combined 2 0 otherwise
  * the operation - gets 2 indexes in a given col and check if need to combine theb
@@ -527,17 +535,33 @@ void PushToEmptyInRow(int firstColLocatio, int designateColLoc, int i, int direc
  * the operation - gets 2 indexes in a given col and push in a loop everyone 1 step up/down.
  */
 void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int direction) {
-    //run in a loop until you finish with to col and move each one one step
-    while ((firstRowLocation >= 0) && (firstRowLocation < MATRIX_ROW_SIZE) &&
-           (designateRowLoc >= 0) && (designateRowLoc < MATRIX_ROW_SIZE)) {
-        GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
-        GameMatrix[firstRowLocation][j] = 0;
-        //check if need to go up or down and update counters
-        if (direction == 1) {
-            UpdateCountForUpAndLeft(&firstRowLocation, &designateRowLoc);
+    int temp = firstRowLocation;
 
+    //push up
+    while ((temp >= 0) && (temp < MATRIX_ROW_SIZE)) {
+        //run in a loop until you finish with to col and move each one one step
+        while ((firstRowLocation >= 0) && (firstRowLocation < MATRIX_ROW_SIZE) &&
+               (designateRowLoc >= 0) && (designateRowLoc < MATRIX_ROW_SIZE) && (GameMatrix[designateRowLoc][j] == 0)) {
+            GameMatrix[designateRowLoc][j] = GameMatrix[firstRowLocation][j];
+            GameMatrix[firstRowLocation][j] = 0;
+            //check if need to go up or down and update counters
+            if (direction == 1) {
+                UpdateCountForUpAndLeft(&firstRowLocation, &designateRowLoc);
+
+            } else {
+                UpdateCountForDownAndRight(&firstRowLocation, &designateRowLoc);
+            }
+        }
+        if (direction == 1) {
+
+            firstRowLocation = temp + 1;
+            designateRowLoc = temp;
+            temp += 1;
         } else {
-            UpdateCountForDownAndRight(&firstRowLocation, &designateRowLoc);
+
+            firstRowLocation = temp - 1;
+            designateRowLoc = temp;
+            temp -= 1;
         }
     }
 }
@@ -549,8 +573,8 @@ void PushToEmptyInCol(int firstRowLocation, int designateRowLoc, int j, int dire
  * the operation - gets 2 numbers and updates them upward
  */
 void UpdateCountForUpAndLeft(int *first, int *sec) {
-    (*first)++;
-    (*sec)++;
+    (*first)--;
+    (*sec)--;
 }
 
 /**
@@ -562,4 +586,30 @@ void UpdateCountForUpAndLeft(int *first, int *sec) {
 void UpdateCountForDownAndRight(int *first, int *sec) {
     (*first)--;
     (*sec)--;
+}
+
+/**
+ *
+ *   the operation - this function is in charge of printing the board to the game
+ */
+void PrintMatrix() {
+    int i = 0;
+    char temp[32];
+    //todo handle write errors
+    for (i; i < 4; i++) {
+        write(STDOUT_FILENO, "|", strlen("|"));
+        int j = 0;
+        for (j; j < 4; j++) {
+            if ((GameMatrix[i][j]) > 0) {
+                memset(temp, 32, 0);
+                sprintf(temp, "%04d", GameMatrix[i][j]);
+                write(STDOUT_FILENO, temp, strlen(temp));
+            } else {
+                write(STDOUT_FILENO, "    ", strlen("    "));
+            }
+            write(STDOUT_FILENO, " ", strlen(" "));
+            write(STDOUT_FILENO, "|", strlen("|"));
+        }
+        write(STDOUT_FILENO, "\n", strlen("\n"));
+    }
 }
