@@ -54,6 +54,7 @@ void AlarmHandler(int sig);
 int inputDirection;
 unsigned int waitTime;
 __pid_t SecondProcessPid;
+int fd;
 
 /**
  *
@@ -64,29 +65,36 @@ __pid_t SecondProcessPid;
  */
 int main(int argc, char *argv[]) {
 
-
+    //check arguments
     if (argc < 2) {
         perror("not enough parameters");
         exit(0);
     }
-
-    int fd = open("boardFile.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    //open file
+    fd = open("boardFile.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0) {
-        //todo handle
+        perror("failed open file");
+        exit(-1);
     }
-    //if (dup2(fd, 1) < 0) {
-    //todo handle
-    //}
+    if (dup2(fd, 1) < 0) {
+        perror("failed to dup");
+        exit(-1);
+    }
     SecondProcessPid = atoi(argv[1]);
     //create the board
-    //CreateBoard();
-    //PrintMazeLine();
-
-    //kill(SecondProcessPid, SIGUSR1);
+    CreateBoard();
+    PrintMazeLine();
+    if (kill(SecondProcessPid, SIGUSR1) < 0) {
+        perror("failed to send signal");
+        exit(-1);
+    }
     //set the handle in sigint
     SetHandler();
     //run the game in a loop
     ManageGame();
+    if (unlink("boardFile.txt") < 0) {
+        perror("failed to close file");
+    }
     return 0;
 
 }
@@ -102,7 +110,6 @@ void SetHandler() {
 
     //fill the sett with all signals
     sigfillset(&closeBlock);
-
     //set the handling function for sigint
     CloseAction.sa_handler = HandleClose;
     CloseAction.sa_mask = closeBlock;
@@ -138,9 +145,10 @@ void AlarmHandler(int sig) {
     GameMatrix[XRandom][YRandom] = 2;
     //write the board and notify the other process
     PrintMazeLine();
-    //if (kill(SecondProcessPid, SIGUSR1) < 0) {
-    //todo handle error
-    //}
+    if (kill(SecondProcessPid, SIGUSR1) < 0) {
+        perror("failed to send signal");
+        exit(-1);
+    }
     waitTime = (rand() % 4) + 1;
     //reset the wait time
     alarm(waitTime);
@@ -153,7 +161,6 @@ void AlarmHandler(int sig) {
  * to what is define . moving the board to the wanted direction.
  */
 void HandleUserInput(int sig) {
-
 
     //todo what if it's not legal key need also set alarm to 0?
     SetUsrSignal();
@@ -185,21 +192,19 @@ void HandleUserInput(int sig) {
     alarm(0);
     //write the board and notify the other process
     PrintMazeLine();
-    //if (kill(SecondProcessPid, SIGUSR1) < 0) {
-    //todo handle
-    //}
-
+    if (kill(SecondProcessPid, SIGUSR1) < 0) {
+        perror("failed to send signal");
+        exit(-1);
+    }
 }
 
 void SetAlarmSignal() {
     struct sigaction alarmAction;
     sigset_t alarmBlock;
-
     //fill the sett with all signals
     sigfillset(&alarmBlock);
     sigdelset(&alarmBlock, SIGINT);
     //set the handling function for sigint
-
     alarmAction.sa_handler = AlarmHandler; //todo need to reset after every handle??
     alarmAction.sa_mask = alarmBlock;
     alarmAction.sa_flags = 0;
@@ -214,12 +219,10 @@ void SetAlarmSignal() {
 void SetUsrSignal() {
     struct sigaction alarmAction;
     sigset_t alarmBlock;
-
     //fill the sett with all signals
     sigfillset(&alarmBlock);
     sigdelset(&alarmBlock, SIGINT);
     //set the handling function for sigint
-
     alarmAction.sa_handler = HandleUserInput; //todo need to reset after every handle??
     alarmAction.sa_mask = alarmBlock;
     alarmAction.sa_flags = 0;
@@ -231,9 +234,6 @@ void SetUsrSignal() {
     }
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-
 /**
  * the operation_ the function that runs the game.
  * get user key and respond.
@@ -244,23 +244,19 @@ void ManageGame() {
     SetAlarmSignal();
     SetUsrSignal();
     __pid_t thisPid = getpid();
-    GameMatrix[0][3] = 2;
-    GameMatrix[0][1] = 2;
-    //GameMatrix[2][1] = 2;
-    GameMatrix[0][0] = 2;
-    PrintMatrix();
-    while (1) {
 
+    while (1) {
         alarm(waitTime);
         system("/bin/stty raw");
         inputDirection = getchar();
         system("/bin/stty cooked");
-        kill(thisPid, SIGUSR1);
         alarm(0);
+        if (kill(thisPid, SIGUSR1) < 0) {
+            perror("failed to send signal");
+            exit(-1);
+        }
         srand(time(NULL));
         waitTime = (rand() % 4) + 1;
-        PrintMatrix();
-        waitTime = 10;
     }
 }
 
@@ -271,8 +267,9 @@ void ManageGame() {
  * process.
  */
 void HandleClose(int sigNum) {
-    if (write(1, "BYE BYE", strlen("BYE BYE")) < 0) {
-        //TODO handle error
+
+    if (unlink("boardFile.txt") < 0) {
+        perror("failed to close file");
     }
     exit(0);
 }
@@ -297,14 +294,17 @@ void PrintMazeLine() {
             snprintf(buff, 4, "%d", temp);
             strcat(arr, buff);
             //add comma
-            if (i != MATRIX_ROW_SIZE - 1 || j != MATRIX_COL_SIZE - 1) {
+            if ((i != MATRIX_ROW_SIZE - 1) || (j != MATRIX_COL_SIZE - 1)) {
                 strcat(arr, ",");
             }
         }
     }
     arr[strlen(arr)] = ',';
     arr[strlen(arr)] = '\n';
-    write(STDOUT_FILENO, arr, strlen(arr));
+    if(write(STDOUT_FILENO, arr, strlen(arr))<0){
+        perror("failed to write to file");
+        exit(-1);
+    }
 }
 
 /**
@@ -337,10 +337,7 @@ void CreateBoard() {
     secondY = secondSquareRandom % MATRIX_ROW_SIZE;
     GameMatrix[firstX][firstY] = 2;
     GameMatrix[secondX][secondY] = 2;
-
-
 }
-
 
 /**
  * the operation - moves the board up
@@ -592,30 +589,4 @@ void UpdateCountForUpAndLeft(int *first, int *sec) {
 void UpdateCountForDownAndRight(int *first, int *sec) {
     (*first)++;
     (*sec)++;
-}
-
-/**
- *
- *   the operation - this function is in charge of printing the board to the game
- */
-void PrintMatrix() {
-    int i = 0;
-    char temp[32];
-    //todo handle write errors
-    for (i; i < 4; i++) {
-        write(STDOUT_FILENO, "|", strlen("|"));
-        int j = 0;
-        for (j; j < 4; j++) {
-            if ((GameMatrix[i][j]) > 0) {
-                memset(temp, 32, 0);
-                sprintf(temp, "%04d", GameMatrix[i][j]);
-                write(STDOUT_FILENO, temp, strlen(temp));
-            } else {
-                write(STDOUT_FILENO, "    ", strlen("    "));
-            }
-            write(STDOUT_FILENO, " ", strlen(" "));
-            write(STDOUT_FILENO, "|", strlen("|"));
-        }
-        write(STDOUT_FILENO, "\n", strlen("\n"));
-    }
 }
