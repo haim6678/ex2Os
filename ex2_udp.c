@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     //run the game in a loop
     ManageGame();
     if (unlink("boardFile.txt") < 0) {
-        perror("failed to close file");
+        perror("failed to close file upd");
     }
     return 0;
 
@@ -269,7 +269,7 @@ void ManageGame() {
 void HandleClose(int sigNum) {
 
     if (unlink("boardFile.txt") < 0) {
-        perror("failed to close file");
+        perror("failed to close file upd2");
     }
     exit(0);
 }
