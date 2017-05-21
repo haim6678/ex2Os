@@ -6,10 +6,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 
-#define BUFF_SIZE 256
 #define MATRIX_ROW_SIZE 4
 #define MATRIX_COL_SIZE 4
-#define READ_SINE 79
 
 void PrintMatrix();
 
@@ -22,7 +20,7 @@ void GetFromStdin();
 void SetSiguserSinal();
 
 int GameMatrix[MATRIX_ROW_SIZE][MATRIX_COL_SIZE] = {0};
-
+int fd;
 
 /**
  *
@@ -31,13 +29,15 @@ int GameMatrix[MATRIX_ROW_SIZE][MATRIX_COL_SIZE] = {0};
  */
 int main() {
 
-
-    int fd = open("boardFile.txt", O_CREAT | O_RDONLY, 0666);
+    //open file
+    fd = open("boardFile.txt", O_CREAT | O_RDONLY, 0666);
     if (fd < 0) {
-        //todo handle
+        perror("failed to open file");
+        exit(-1);
     }
     if (dup2(fd, 0) < 0) {
-        //todo handle
+        perror("failed to dup");
+        exit(-1);
     }
     //declare on the sigaction members
     struct sigaction CloseAction;
@@ -48,7 +48,6 @@ int main() {
     CloseAction.sa_handler = HandleClose;
     CloseAction.sa_mask = closeBlock;
     CloseAction.sa_flags = 0;
-
     //set for sigint
     if (sigaction(SIGINT, &CloseAction, NULL) != 0) {
         perror("faild in sigaction");
@@ -71,7 +70,6 @@ int main() {
 void SetSiguserSinal() {
     struct sigaction InputAction;
     sigset_t inputBlock;
-
     sigfillset(&inputBlock);
     //set the handling function for siusr
     InputAction.sa_handler = HandleSiguser1;
@@ -79,7 +77,6 @@ void SetSiguserSinal() {
     InputAction.sa_flags = 0;
     //remove the wanted signals
     sigdelset(&inputBlock, SIGINT);
-
     if (sigaction(SIGUSR1, &InputAction, NULL) != 0) {
         perror("faild in sigaction");
         exit(-1);
@@ -121,7 +118,8 @@ void GetFromStdin() {
     int number = 0;
     int numLength = 0;
     if (read(STDIN_FILENO, &buff, 1) < 0) {
-        //todo handle error
+        perror("failed to read from file");
+        exit(-1);
     }
     while ((buff != '\0') && (buff != '\n')) {
         if (buff == ',') {
@@ -135,7 +133,8 @@ void GetFromStdin() {
                 j = 0;
             }
             if (read(STDIN_FILENO, &buff, 1) < 0) {
-                //todo handle error
+                perror("failed to read from file");
+                exit(-1);
             }
             continue;
         }
@@ -146,7 +145,8 @@ void GetFromStdin() {
         }
         numLength++;
         if (read(STDIN_FILENO, &buff, 1) < 0) {
-            //todo handle error
+            perror("failed to read from file");
+            exit(-1);
         }
     }
 }
@@ -158,7 +158,6 @@ void GetFromStdin() {
 void PrintMatrix() {
     int i = 0;
     char temp[32];
-    //todo handle write errors
     for (i; i < 4; i++) {
         write(STDOUT_FILENO, "|", strlen("|"));
         int j = 0;
@@ -166,13 +165,28 @@ void PrintMatrix() {
             if ((GameMatrix[i][j]) > 0) {
                 memset(temp, 32, 0);
                 sprintf(temp, "%04d", GameMatrix[i][j]);
-                write(STDOUT_FILENO, temp, strlen(temp));
+                if(write(STDOUT_FILENO, temp, strlen(temp))<0){
+                    perror("failed to write to file");
+                    exit(-1);
+                }
             } else {
-                write(STDOUT_FILENO, "    ", strlen("    "));
+                if(write(STDOUT_FILENO, "    ", strlen("    "))<0){
+                    perror("failed to write to file");
+                    exit(-1);
+                }
             }
-            write(STDOUT_FILENO, " ", strlen(" "));
-            write(STDOUT_FILENO, "|", strlen("|"));
+            if(write(STDOUT_FILENO, " ", strlen(" "))<0){
+                perror("failed to write to file");
+                exit(-1);
+            }
+            if(write(STDOUT_FILENO, "|", strlen("|"))<0){
+                perror("failed to write to file");
+                exit(-1);
+            }
         }
-        write(STDOUT_FILENO, "\n", strlen("\n"));
+        if(write(STDOUT_FILENO, "\n", strlen("\n"))<0){
+            perror("failed to write to file");
+            exit(-1);
+        }
     }
 }
